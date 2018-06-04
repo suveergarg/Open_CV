@@ -72,7 +72,9 @@ def decode(im) :
 
 # Display barcode and QR code location  
 def compute(im, decodedObjects):
- 
+  l_sets=[]
+  inp=[]
+  op=[]		
   # Loop over all decoded objects
   for decodedObject in decodedObjects: 
     	points = decodedObject.polygon
@@ -91,9 +93,11 @@ def compute(im, decodedObjects):
 
   #print("Input:",inp)
   #print("Output:",op)
+  Threshold=0
+  if (len(inp)>1):
+  	Threshold= find_distance(inp[0].centre,inp[1].centre)/2  
+  	print ("Input pairs:",inp[0].data,inp[1].data)
   
-  Threshold= find_distance(inp[0].centre,inp[1].centre)/2  
-  print ("Input pairs:",inp[0].data,inp[1].data)
   print ("Threshold:",Threshold)
   for qri in inp:
 	val=[]
@@ -101,17 +105,16 @@ def compute(im, decodedObjects):
 		
 		dist=math.ceil(find_distance(qri.centre,qro.centre))
 		
-		if(dist<Threshold):			
+		if(dist<Threshold or Threshold==0):			
 			val.append(qro)
 			#print ("Pairs: " , qri.data,qro.data)		
               		#print ("Dist: " , dist,"\n")
-						
+				
 
 		 
-	sets.append((qri,val))
-        
-def display(im):
-  for Set in sets:
+	l_sets.append((qri,val))
+
+  for Set in l_sets:
 	ip,ops=Set
 	print ("Input :", ip.data)
 	print ("Output:",  [v.data for v in ops],"\n")
@@ -122,7 +125,7 @@ def display(im):
   #if(len(op)<3):
   #print("Angles:",find_angle(lines),'\n');
   #cv2.putText(im,"Angle:"+str(find_angle(lines)),(30,30),cv2.FONT_HERSHEY_SIMPLEX, 1, 255)				
-  cv2.imshow("Results", im)
+  
 
 def destroy():
         button.destroy()
@@ -155,13 +158,12 @@ while(True):
    	# Our operations on the frame come here
 	im = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	decodedObjects= decode(im)
-	
-	if (i==5 and len(decodedObjects)>0): 	
-		print(len(decodedObjects))		
+	#print(len(decodedObjects))
+	if (len(decodedObjects)>1): 			
 		compute(im,decodedObjects)
-		i=0
-	display(im)
-	i=i+1
+		
+	#display(im)
+	cv2.imshow("Results", im)	
 	if cv2.waitKey(1) & 0xFF == ord('q'):
 		break
 
