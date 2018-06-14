@@ -11,8 +11,8 @@ op=[]
 lines=[]
 angles=[]
 sets=[]
-codes_to_track='1'  # List of decoded objects points that need to be tracked
-track_points=[]    # All the tracked Points
+codes_to_track=['1','2']  # List of decoded objects points that need to be tracked
+track_points=[(0,0)]    # All the tracked Points
 class qr_code(object):
     centre = ()
     data=''
