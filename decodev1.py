@@ -11,6 +11,7 @@ op=[]
 lines=[]
 angles=[]
 sets=[]
+qr_codes=[]
 codes_to_track=['1','2']  # List of decoded objects points that need to be tracked
 track_points=[(0,0)]    # All the tracked Points
 class qr_code(object):
@@ -25,10 +26,9 @@ class qr_code(object):
 def track_codes(im,decodedObjects):
 	if(len(codes_to_track)!=0):
 		for code in decodedObjects:
-			if code.data in codes_to_track:
-				centre=find_centre(code.polygon)				
-				if track_points[-1]!=centre:
-					track_points.append(centre)
+			if code.data in codes_to_track:				
+				if track_points[-1]!=code.centre:
+					track_points.append(code.centre)
 	for point in track_points:
 		cv2.circle(im,point,3,(0,0,255),-1)
 
@@ -84,55 +84,17 @@ def decode(im) :
 
 # Display barcode and QR code location  
 def compute(im, decodedObjects):
-  l_sets=[]
-  inp=[]
-  op=[]		
+  
   # Loop over all decoded objects
   for decodedObject in decodedObjects: 
     	points = decodedObject.polygon
     	centre=find_centre(points)	
     	#print ("Object:", points,'\n')	    
     	#print ("Centre:", centre, '\n')
-	cv2.circle(im,centre,10,(0,0,255),-1)
-	cv2.putText(im,decodedObject.data,centre,cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
-	#Condition for Input/Output     	
-	if (decodedObject.data == '1' or decodedObject.data=='6') :
-		#append centre to input 	
-		inp.append(qr_code(decodedObject.data,centre))
-    	else:
-		#append centre to output
-		op.append(qr_code(decodedObject.data,centre))	
-
-  #print("Input:",inp)
-  #print("Output:",op)
-  Threshold=0
-  if (len(inp)>1):
-  	Threshold= find_distance(inp[0].centre,inp[1].centre)/2  
-  	print ("Input pairs:",inp[0].data,inp[1].data)
-  
-  print ("Threshold:",Threshold)
-  for qri in inp:
-	val=[]
-	for qro in op:
-		
-		dist=math.ceil(find_distance(qri.centre,qro.centre))
-		
-		if(dist<Threshold or Threshold==0):			
-			val.append(qro)
-			#print ("Pairs: " , qri.data,qro.data)		
-              		#print ("Dist: " , dist,"\n")
-				
-
-		 
-	l_sets.append((qri,val))
-
-  for Set in l_sets:
-	ip,ops=Set
-	print ("Input :", ip.data)
-	print ("Output:",  [v.data for v in ops],"\n")
-	for op in ops:
-		cv2.line(im,ip.centre,op.centre,(0,0,255))
- 		cv2.putText(im,str(math.ceil(find_distance(ip.centre,op.centre))),find_centre([ip.centre,op.centre]),cv2.FONT_HERSHEY_SIMPLEX, 1, 255)  
+	qr_codes.append(qr_code(decodedObject.data,centre))
+        #Condition for Input/Output
+           	
+	 
   #lines.append(find_slope(point1,point2))
   #if(len(op)<3):
   #print("Angles:",find_angle(lines),'\n');
@@ -145,8 +107,55 @@ def destroy():
         cv2.destroyAllWindows()	
 	button1.destroy()
       
-
+def display(im,qr_codes):
+	l_sets=[]
+  	inp=[]
+  	op=[]		
+	for code in qr_codes:
+		cv2.circle(im,code.centre,10,(0,0,255),-1)
+		cv2.putText(im,code.data,code.centre,cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
 	
+        	if (code.data == '1' or code.data=='6') :
+		#append centre to input 	
+			inp.append(code)
+    		else:
+		#append centre to output
+			op.append(code)	
+
+  #print("Input:",inp)
+  #print("Output:",op)
+  	Threshold=0
+  	if (len(inp)>1):
+  		Threshold= find_distance(inp[0].centre,inp[1].centre)/2  
+  		print ("Input pairs:",inp[0].data,inp[1].data)
+  
+  	print ("Threshold:",Threshold)
+  	for qri in inp:
+		val=[]
+		for qro in op:
+		
+			dist=math.ceil(find_distance(qri.centre,qro.centre))
+		
+			if(dist<Threshold or Threshold==0):			
+				val.append(qro)
+				#print ("Pairs: " , qri.data,qro.data)		
+              			#print ("Dist: " , dist,"\n")
+				
+
+		 
+		l_sets.append((qri,val))
+
+  	for Set in l_sets:
+		ip,ops=Set
+		print ("Input :", ip.data)
+		print ("Output:",  [v.data for v in ops],"\n")
+		for op in ops:
+			cv2.line(im,ip.centre,op.centre,(0,0,255))
+			cv2.putText(im,str(math.ceil(find_distance(ip.centre,op.centre))),find_centre([ip.centre,op.centre]),cv2.FONT_HERSHEY_SIMPLEX, 1, 255) 
+	
+	cv2.imshow("Results", im)	
+	
+
 #Start of Main Script
 root=tk.Tk()
 frame=tk.Frame(root)
@@ -160,6 +169,8 @@ cap = cv2.VideoCapture(0)
 ret, frame = cap.read()
 im = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
 #res = cv2.resize(image,None,fx=2.5, fy=2.5, interpolation = cv2.INTER_CUBIC)
 
 i=0
@@ -169,14 +180,18 @@ while(True):
 
    	# Our operations on the frame come here
 	im = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #ret,im = cv2.threshold(img,100,255,cv2.THRESH_BINARY) 
 	decodedObjects= decode(im)
 	#print(len(decodedObjects))
-	if (len(decodedObjects)>1): 			
+	
+        if (len(decodedObjects)>=len(qr_codes)): 			
+		qr_codes=[]			
 		compute(im,decodedObjects)
-	track_codes(im,decodedObjects)	
-	#display(im)
-	cv2.imshow("Results", im)	
-	if cv2.waitKey(1) & 0xFF == ord('q'):
+	
+        track_codes(im,qr_codes)
+        display(im,qr_codes)
+        out.write(im)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
 		break
 
 # When everything done, release the capture
